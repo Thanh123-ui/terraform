@@ -20,11 +20,12 @@ resource "aws_cloudfront_distribution" "app_cdn" {
     viewer_protocol_policy = "redirect-to-https"
     compress               = true
 
-    allowed_methods = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods  = ["GET", "HEAD"]
 
     forwarded_values {
       query_string = true
+      headers      = ["Authorization", "Origin", "Host"]
 
       cookies {
         forward = "all"
