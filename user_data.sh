@@ -47,6 +47,7 @@ echo "=== [5/9] Install backend dependencies ==="
 runuser -u "$${APP_USER}" -- bash -lc "
   cd '$${APP_DIR}/backend'
   npm install --production
+  npm install bcryptjs --production --no-save
 " || exit 1
 
 echo "=== [5b/9] Install frontend dependencies and build ==="

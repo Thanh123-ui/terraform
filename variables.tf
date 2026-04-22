@@ -41,7 +41,7 @@ variable "ec2_instance_type" {
 
 variable "enable_waf" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "waf_rate_limit" {
