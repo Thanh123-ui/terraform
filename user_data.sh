@@ -5,8 +5,11 @@ exec > >(tee /var/log/user-data.log | logger -t user-data 2>/dev/console) 2>&1
 
 APP_DIR="/opt/webhospital-booking"
 APP_USER="ec2-user"
-# Backend chạy nội bộ port 5001 (không expose ra ngoài)
+# Backend chạy nội bộ port 5001 (không expose trực tiếp ra ngoài Internet)
 # nginx lắng nghe app_port (${app_port}) để ALB Target Group health-check pass
+# Ví dụ:
+# - app_port = 3000  -> ALB trỏ vào nginx:3000
+# - backend port 5001 -> chỉ nginx proxy nội bộ tới
 BACKEND_PORT=5001
 
 echo "=== [1/9] Update OS and install packages ==="
@@ -35,6 +38,13 @@ if [ -z "$${CORS_ORIGIN_VALUE}" ]; then
   CORS_ORIGIN_VALUE="http://localhost:5173,http://127.0.0.1:5173"
 fi
 
+PATIENT_RESET_OTP_LENGTH_VALUE=6
+PATIENT_RESET_OTP_TTL_SECONDS_VALUE=300
+PATIENT_RESET_OTP_RESEND_SECONDS_VALUE=60
+PATIENT_RESET_OTP_PREVIEW_VALUE=true
+AWS_REGION_VALUE=""
+AWS_SNS_SENDER_ID_VALUE=""
+
 cat > "$${APP_DIR}/backend/.env" <<EOF_ENV
 PORT=$${BACKEND_PORT}
 NODE_ENV=production
@@ -48,6 +58,12 @@ JWT_SECRET=$(openssl rand -hex 32)
 JWT_REFRESH_SECRET=$(openssl rand -hex 32)
 BCRYPT_SALT_ROUNDS=10
 CORS_ORIGIN=$${CORS_ORIGIN_VALUE}
+PATIENT_RESET_OTP_LENGTH=$${PATIENT_RESET_OTP_LENGTH_VALUE}
+PATIENT_RESET_OTP_TTL_SECONDS=$${PATIENT_RESET_OTP_TTL_SECONDS_VALUE}
+PATIENT_RESET_OTP_RESEND_SECONDS=$${PATIENT_RESET_OTP_RESEND_SECONDS_VALUE}
+PATIENT_RESET_OTP_PREVIEW=$${PATIENT_RESET_OTP_PREVIEW_VALUE}
+AWS_REGION=$${AWS_REGION_VALUE}
+AWS_SNS_SENDER_ID=$${AWS_SNS_SENDER_ID_VALUE}
 EOF_ENV
 
 chown "$${APP_USER}:$${APP_USER}" "$${APP_DIR}/backend/.env"
@@ -77,7 +93,7 @@ runuser -u "$${APP_USER}" -- bash -lc "
 " || exit 1
 
 echo "=== [6/9] Configure nginx ==="
-# nginx port ${app_port} (ALB Target Group trỏ vào đây)
+# nginx port ${app_port} (ALB Target Group trỏ vào đây, ví dụ 3000)
 #  → /api/*      proxy → backend :$${BACKEND_PORT}
 #  → /socket.io/ proxy → backend :$${BACKEND_PORT} (WebSocket upgrade)
 #  → /health     trả 200 cho ALB health check
