@@ -39,6 +39,11 @@ variable "ec2_instance_type" {
   default     = "t3.micro"
 }
 
+variable "enable_nat_gateway" {
+  type    = bool
+  default = false
+}
+
 variable "enable_waf" {
   type    = bool
   default = false
