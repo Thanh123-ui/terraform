@@ -20,5 +20,10 @@ locals {
     db_password     = var.db_password
     app_port        = var.app_port
     cors_origin     = local.cors_origin
+    email_provider        = var.email_provider
+    ses_region            = var.ses_region
+    ses_access_key_id     = var.ses_access_key_id
+    ses_secret_access_key = var.ses_secret_access_key
+    email_from            = var.email_from
   })
 }
