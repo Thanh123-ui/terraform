@@ -64,3 +64,38 @@ variable "app_port" {
   type        = number
   default     = 3000
 }
+
+# ─── Email / AWS SES ────────────────────────────────────────────────────────
+# email_provider = "ethereal" → chế độ test (không gửi mail thật)
+# email_provider = "ses"      → production (cần SES Sandbox được duyệt)
+variable "email_provider" {
+  description = "Email provider: 'ethereal' (test local) or 'ses' (AWS SES production)"
+  type        = string
+  default     = "ethereal"
+}
+
+variable "ses_region" {
+  description = "AWS SES region (chỉ cần khi email_provider = 'ses')"
+  type        = string
+  default     = ""
+}
+
+variable "ses_access_key_id" {
+  description = "AWS SES IAM Access Key ID (chỉ cần khi email_provider = 'ses')"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "ses_secret_access_key" {
+  description = "AWS SES IAM Secret Access Key (chỉ cần khi email_provider = 'ses')"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "email_from" {
+  description = "Địa chỉ email gửi đi (chỉ cần khi email_provider = 'ses')"
+  type        = string
+  default     = ""
+}
