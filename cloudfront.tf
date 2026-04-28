@@ -1,7 +1,13 @@
+############################################
+# CLOUDFRONT DISTRIBUTION
+############################################
 resource "aws_cloudfront_distribution" "app_cdn" {
   enabled         = true
   is_ipv6_enabled = true
-  comment         = "CloudFront for existing ALB"
+  comment         = "CloudFront for ${var.project_name}-${var.environment}"
+
+  # Custom domain
+  aliases = ["nguyenchithanhit.id.vn"]
 
   origin {
     domain_name = aws_lb.app_alb.dns_name
@@ -43,8 +49,11 @@ resource "aws_cloudfront_distribution" "app_cdn" {
     }
   }
 
+  # Dùng ACM Certificate đã tạo (us-east-1) để bật HTTPS cho domain
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = "arn:aws:acm:us-east-1:216938125549:certificate/2f1c625d-ad4c-426e-9bf2-94d26eee19ef"
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   depends_on = [

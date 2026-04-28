@@ -5,10 +5,14 @@ resource "aws_launch_template" "app" {
   name_prefix   = "${var.project_name}-lt-"
   image_id      = data.aws_ssm_parameter.amazon_linux_ami.value
   instance_type = var.ec2_instance_type
-  key_name      = var.key_name
+  key_name      = data.aws_ssm_parameter.key_name.value
 
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   user_data              = base64encode(local.user_data)
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.backend_profile.name
+  }
 
   block_device_mappings {
     device_name = "/dev/xvda"

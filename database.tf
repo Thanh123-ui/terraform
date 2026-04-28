@@ -21,8 +21,8 @@ resource "aws_db_instance" "mysql" {
   allocated_storage       = 20
   storage_type            = "gp2"
   db_name                 = local.db_name
-  username                = var.db_username
-  password                = var.db_password
+  username                = data.aws_ssm_parameter.db_username.value
+  password                = data.aws_ssm_parameter.db_password.value
   port                    = local.db_port
   publicly_accessible     = false
   multi_az                = false

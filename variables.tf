@@ -10,22 +10,15 @@ variable "project_name" {
   default     = "hospital-booking"
 }
 
-variable "key_name" {
-  description = "EC2 Key Pair name"
+variable "environment" {
+  description = "Environment (dev, staging, prod)"
   type        = string
+  default     = "dev"
 }
 
-variable "db_username" {
-  description = "RDS master username"
-  type        = string
-  default     = "admin"
-}
-
-variable "db_password" {
-  description = "RDS master password"
-  type        = string
-  sensitive   = true
-}
+# key_name, db_username, db_password, github_repo_url, email_from
+# được lấy tự động từ AWS SSM Parameter Store (xem data.tf)
+# Không cần khai báo ở đây nữa để tránh lộ thông tin nhạy cảm.
 
 variable "db_instance_class" {
   description = "RDS instance class"
@@ -54,15 +47,10 @@ variable "waf_rate_limit" {
   default = 100
 }
 
-variable "github_repo_url" {
-  description = "Public GitHub repo URL"
-  type        = string
-}
-
 variable "app_port" {
-  description = "Node.js app port"
+  description = "Port nginx/frontend expose ra ngoài. ALB Target Group trỏ vào đây."
   type        = number
-  default     = 3000
+  default     = 80
 }
 
 # ─── Email / AWS SES ────────────────────────────────────────────────────────
@@ -71,31 +59,11 @@ variable "app_port" {
 variable "email_provider" {
   description = "Email provider: 'ethereal' (test local) or 'ses' (AWS SES production)"
   type        = string
-  default     = "ethereal"
+  default     = "ses"
 }
 
 variable "ses_region" {
-  description = "AWS SES region (chỉ cần khi email_provider = 'ses')"
+  description = "AWS SES region"
   type        = string
-  default     = ""
-}
-
-variable "ses_access_key_id" {
-  description = "AWS SES IAM Access Key ID (chỉ cần khi email_provider = 'ses')"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "ses_secret_access_key" {
-  description = "AWS SES IAM Secret Access Key (chỉ cần khi email_provider = 'ses')"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
-variable "email_from" {
-  description = "Địa chỉ email gửi đi (chỉ cần khi email_provider = 'ses')"
-  type        = string
-  default     = ""
+  default     = "us-east-1"
 }
