@@ -119,3 +119,18 @@ module "cdn_waf" {
 
   depends_on = [module.app_cluster]
 }
+
+############################################
+# LAYER 6 — CI/CD: GitHub Actions OIDC
+# Tạo kết nối tin tưởng giữa GitHub và AWS
+# Không cần Access Key — an toàn nhất hiện nay
+############################################
+module "github_oidc" {
+  source = "../../modules/iam-github-oidc"
+
+  name_prefix     = local.name_prefix
+  github_repo     = var.github_terraform_repo
+  aws_region      = var.aws_region
+  tf_state_bucket = var.tf_state_bucket
+  tf_lock_table   = var.tf_lock_table
+}
