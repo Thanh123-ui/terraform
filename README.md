@@ -97,6 +97,7 @@ terraform/
 ├── .env.example                # Example app/runtime environment values
 ├── .gitignore
 ├── INFRASTRUCTURE.md           # Research/defense infrastructure notes
+├── PROJECT_SUMMARY.md          # CV and interview summary
 └── README.md
 ```
 
@@ -123,15 +124,23 @@ For this Terraform repository:
 
 ### Terraform workflow
 
+If this Terraform directory is inside the main application repository, run:
+
 ```bash
-git clone https://github.com/ChiThanh-cloud/terraform.git
-cd terraform/environments/prod
+git clone https://github.com/ChiThanh-cloud/webhospital-booking.git
+cd webhospital-booking/terraform/environments/prod
 
 terraform init
 terraform fmt -recursive
 terraform validate
 terraform plan
 terraform apply
+```
+
+If you are working from this standalone Terraform repository checkout, run the same commands from:
+
+```bash
+cd environments/prod
 ```
 
 ## Environment Variables
@@ -256,3 +265,4 @@ Suggested evidence to add:
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [Security guide](docs/SECURITY.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Project summary](PROJECT_SUMMARY.md)
