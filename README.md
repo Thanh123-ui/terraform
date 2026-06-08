@@ -97,7 +97,6 @@ terraform/
 ├── .env.example                # Example app/runtime environment values
 ├── .gitignore
 ├── INFRASTRUCTURE.md           # Research/defense infrastructure notes
-├── PROJECT_SUMMARY.md          # CV and interview summary
 └── README.md
 ```
 
@@ -257,4 +256,3 @@ Suggested evidence to add:
 - [Deployment guide](docs/DEPLOYMENT.md)
 - [Security guide](docs/SECURITY.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [Project summary for CV/interview](PROJECT_SUMMARY.md)

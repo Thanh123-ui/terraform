@@ -29,17 +29,18 @@ ALB security group -> EC2 security group on the application port
 EC2 security group -> RDS security group on port 3306
 ```
 
-## 3. CI/CD Readiness and Remote State
+## 3. CI/CD and Remote State
 
 Terraform state is stored remotely in S3 through `environments/prod/backend.tf`. The backend uses server-side encryption and S3 native lockfile support to reduce concurrent state modification risk.
 
-This repository includes `modules/iam-github-oidc`, which creates an AWS IAM role that GitHub Actions can assume through OIDC instead of long-lived AWS access keys. A workflow file is not currently present in this repository, so the CI/CD pipeline should be added before claiming fully automated Terraform deployment.
+GitHub Actions runs Terraform from `.github/workflows/terraform.yml`. The workflow is triggered by pull requests and pushes to `main` when files under `environments/prod/`, `modules/`, or `.github/workflows/` change.
 
-A recommended GitHub Actions workflow would:
+Workflow behavior:
 
-- Run `terraform init`, `terraform fmt -check`, `terraform validate`, and `terraform plan` on pull requests.
-- Run the same checks and require approval before `terraform apply` on the main branch.
-- Use GitHub OIDC and `AWS_ROLE_ARN`, so no AWS access key is stored in GitHub Secrets.
+- Pull requests run `terraform init`, `terraform fmt -check -recursive`, `terraform validate`, and `terraform plan`.
+- Pull requests receive a Terraform plan comment through `actions/github-script`.
+- Pushes to `main` run the same checks and then `terraform apply -auto-approve tfplan`.
+- AWS authentication uses GitHub OIDC and the `AWS_ROLE_ARN` GitHub secret, so no AWS access key is stored in GitHub Secrets.
 
 The provider lock file `environments/prod/.terraform.lock.hcl` should be committed after `terraform init` to keep Terraform provider resolution reproducible across machines and CI runners.
 
@@ -68,7 +69,7 @@ Required parameters:
 
 - Modular Terraform layout makes the system easier to explain, reuse, and extend.
 - Remote state avoids local-only infrastructure management.
-- GitHub OIDC module is available to avoid long-lived AWS access keys once CI/CD workflow files are added.
+- GitHub OIDC avoids long-lived AWS access keys in CI/CD.
 - The GitHub Actions role avoids `iam:*` and lists the specific IAM operations Terraform needs for this project.
 - Runtime database credentials are fetched by EC2 from SSM instead of being rendered into Launch Template user data.
 - RDS is not publicly accessible and only accepts traffic from the EC2 security group.
