@@ -13,6 +13,9 @@
 *.tfstate.backup
 
 # ─── Secrets & overrides (never commit) ───────────────────
+.env
+.env.*
+!.env.example
 *.tfvars.json
 override.tf
 override.tf.json
@@ -25,6 +28,13 @@ crash.*.log
 
 # ─── Plan output (binary, not human-readable) ─────────────
 *.tfplan
+tfplan
+plan.out
+
+# ─── Logs and local caches ────────────────────────────────
+*.log
+.terraformrc
+terraform.rc
 
 # ─── Other ───────────────────────────────────────────────
 TECHNICAL_EXPLAINER.md

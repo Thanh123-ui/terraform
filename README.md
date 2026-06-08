@@ -1,249 +1,260 @@
-# 🏥 Hospital Booking System – AWS Infrastructure (Terraform)
+# Hospital Booking System - AWS Infrastructure & Full-stack Deployment
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Terraform-≥1.5.0-7B42BC?logo=terraform&logoColor=white" />
-  <img src="https://img.shields.io/badge/AWS-Cloud-FF9900?logo=amazonaws&logoColor=white" />
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white" />
-  <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white" />
-  <img src="https://img.shields.io/badge/License-MIT-green" />
-</p>
+Infrastructure as Code for a healthcare appointment booking platform. This repository provisions the AWS side of the Hospital Booking System and documents how the frontend, backend API, database, and deployment flow are intended to run together.
 
-> Production-oriented AWS infrastructure for the [Hospital Booking System](https://github.com/ChiThanh-cloud/webhospital-booking), provisioned entirely with **Terraform** (Infrastructure as Code).  
-> Frontend & Backend run as **Docker containers** on EC2 — portable, reproducible, and zero manual server setup.
+Main application repository: <https://github.com/ChiThanh-cloud/webhospital-booking>
 
----
+Suggested GitHub description: Full-stack hospital booking system with AWS deployment architecture, Docker, backend API, database, and cloud security documentation.
 
-## ✨ Architecture Overview
+Suggested topics: `hospital-booking`, `healthcare`, `fullstack`, `aws`, `terraform`, `docker`, `cloud-infrastructure`, `nodejs`, `react`, `mysql`
 
+## Overview
+
+The Hospital Booking System is designed as a full-stack healthcare booking project with patient-facing, doctor/staff, and admin workflows in the main application repository. This Terraform repository focuses on the cloud deployment architecture: AWS networking, compute, database, CDN, optional WAF, IAM roles, SSM-based configuration, and EC2 bootstrap automation.
+
+This is a demo/research infrastructure project, not a fully hardened production system. The documentation calls out current limitations and future improvements where appropriate.
+
+## Key Features
+
+Application features are implemented in the main `webhospital-booking` repository. This infrastructure repository supports the following deployment capabilities:
+
+| Area | Supported by this repo |
+| --- | --- |
+| Patient | Public web access through CloudFront and ALB for the booking application |
+| Doctor/Staff | Backend API deployment support through Docker Compose on EC2 |
+| Admin | Backend/database deployment support for application management features |
+| Cloud infrastructure | Terraform modules for network security groups, EC2 Auto Scaling, ALB, RDS MySQL, CloudFront, optional WAF, IAM, and GitHub OIDC |
+| Runtime configuration | AWS SSM Parameter Store for database credentials, repo URL, key pair name, and email sender |
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React app in the main `webhospital-booking` repository, deployed by `docker-compose.prod.yml` during EC2 bootstrap |
+| Backend | Node.js API in the main `webhospital-booking` repository, deployed by `docker-compose.prod.yml` during EC2 bootstrap |
+| Mobile | Not present in this Terraform repository |
+| Database | AWS RDS MySQL 8.0 |
+| Cloud / Infrastructure | AWS VPC default network lookup, Security Groups, ALB, EC2 Launch Template, Auto Scaling Group, RDS, CloudFront, optional AWS WAF v2, IAM, SSM Parameter Store, SES |
+| DevOps / Deployment | Terraform >= 1.5, AWS provider ~> 6.0, EC2 `user_data.sh`, Docker, Docker Compose, GitHub Actions OIDC IAM role |
+
+## Architecture
+
+```text
+Client / Mobile App
+        |
+        v
+CloudFront CDN
+        |
+        v
+Application Load Balancer
+        |
+        v
+EC2 Auto Scaling Group
+        |
+        v
+Docker Compose: frontend + backend API
+        |
+        v
+RDS MySQL 8.0
 ```
-                          ┌─────────────────────────────────┐
-                          │            Internet             │
-                          └───────────────┬─────────────────┘
-                                          │
-                          ┌───────────────▼─────────────────┐
-                          │         CloudFront CDN           │
-                          │ HTTPS · Domain · Optional WAF    │
-                          │  ACM SSL      │
-                          └───────────────┬─────────────────┘
-                                          │
-                          ┌───────────────▼─────────────────┐
-                          │   Application Load Balancer      │
-                          │   Health Check: GET /health      │
-                          └───────────────┬─────────────────┘
-                                          │
-                          ┌───────────────▼─────────────────┐
-                          │     EC2 Auto Scaling Group       │
-                          │  ┌───────────────────────────┐  │
-                          │  │   Docker Compose           │  │
-                          │  │   ├── Frontend (React/Nginx)│  │
-                          │  │   └── Backend  (Node.js)   │  │
-                          │  └───────────────────────────┘  │
-                          │  IAM Role: SSM + SES (no keys)  │
-                          └───────────────┬─────────────────┘
-                                          │ Port 3306 only
-                          ┌───────────────▼─────────────────┐
-                          │       RDS MySQL 8.0              │
-                          │  Private · Security Group locked │
-                          └─────────────────────────────────┘
-```
 
----
+Security boundaries implemented in Terraform:
 
-## 🗂️ Project Structure
+- ALB security group accepts public HTTP traffic on port 80.
+- EC2 security group accepts app traffic only from the ALB security group.
+- RDS security group accepts MySQL traffic only from the EC2 security group.
+- EC2 uses an IAM instance profile for SSM Session Manager, SSM Parameter Store reads, SES email sending, and CloudWatch Logs writes.
+- CloudFront redirects viewers to HTTPS when an ACM certificate/custom domain is configured.
+- WAF is implemented as an optional ALB protection layer and is disabled by default to control demo cost.
 
-```
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## Repository Structure
+
+```text
 terraform/
-│
 ├── environments/
 │   └── prod/
 │       ├── backend.tf          # S3 remote state backend
+│       ├── main.tf             # Production module composition
+│       ├── outputs.tf          # Useful infrastructure outputs
 │       ├── providers.tf        # Terraform and AWS provider configuration
-│       ├── variables.tf        # Production input variables
 │       ├── terraform.tfvars    # Non-sensitive production values
-│       ├── main.tf             # Composition layer wiring all modules
-│       └── outputs.tf          # Deployment outputs
-│
+│       └── variables.tf        # Production input variables
 ├── modules/
-│   ├── network/                # Default VPC lookup and security groups
-│   ├── iam/                    # EC2 instance profile and runtime permissions
+│   ├── app-cluster/            # ALB, Launch Template, Auto Scaling, user_data.sh
+│   ├── cdn-waf/                # CloudFront and optional AWS WAF v2
 │   ├── database/               # RDS MySQL and DB subnet group
-│   ├── app-cluster/            # ALB, Launch Template, Auto Scaling Group
-│   ├── cdn-waf/                # CloudFront distribution and optional WAF
-│   └── iam-github-oidc/        # GitHub Actions OIDC role for Terraform CI/CD
-│
-├── .github/workflows/
-│   └── terraform.yml           # Terraform CI/CD pipeline
-│
-├── README.md                   # Project overview and usage
-└── INFRASTRUCTURE.md           # Research/defense architecture notes
+│   ├── iam/                    # EC2 runtime role, instance profile, IAM policies
+│   ├── iam-github-oidc/        # GitHub Actions OIDC IAM role
+│   └── network/                # Default VPC lookup and security groups
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── DEPLOYMENT.md
+│   ├── SECURITY.md
+│   ├── TROUBLESHOOTING.md
+│   └── images/.gitkeep
+├── .env.example                # Example app/runtime environment values
+├── .gitignore
+├── INFRASTRUCTURE.md           # Research/defense infrastructure notes
+├── PROJECT_SUMMARY.md          # CV and interview summary
+└── README.md
 ```
 
----
+## Local Development
 
-## 🔧 Tech Stack
-
-| Layer | Technology | Purpose |
-|---|---|---|
-| IaC | **Terraform ≥ 1.5** | Provision & manage all AWS resources |
-| CDN | **AWS CloudFront** | Global edge caching, HTTPS termination |
-| SSL | **AWS ACM** | Free auto-renewing SSL certificate |
-| Load Balancer | **AWS ALB** | Traffic distribution, health checks |
-| Compute | **EC2 + Auto Scaling** | Self-healing, scalable app servers |
-| Containers | **Docker Compose** | Run Frontend + Backend as containers |
-| Database | **RDS MySQL 8.0** | Managed relational database |
-| Secrets | **SSM Parameter Store** | Zero-hardcode secret management |
-| IAM | **EC2 IAM Role** | Keyless AWS access (Least Privilege) |
-| Email | **AWS SES** | Transactional email via IAM Role |
-| Security | **Optional AWS WAF v2** | Rate limiting, IP reputation, OWASP managed rules |
-
---- 
-
-## 🔒 Security Highlights
-
-### ✅ No Access Keys on EC2
-EC2 uses an **IAM Instance Profile** — never an `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY`. The role grants only what the app needs:
-- `AmazonSSMManagedInstanceCore` — keyless SSH via AWS Systems Manager.
-- `ses:SendEmail` — scoped to a single verified SES identity.
-
-### ✅ Secrets Never in Code
-All sensitive values are stored in **AWS SSM Parameter Store**. Terraform uses the database password only where it is required to provision RDS, while EC2 receives SSM parameter names and fetches runtime secrets with its instance role during bootstrap. This keeps database credentials out of the Launch Template `user_data` and reduces secret exposure in bootstrap logs.
-
-### ✅ Scoped IAM for CI/CD
-GitHub Actions uses OIDC instead of long-lived AWS keys. The Terraform CI/CD role keeps broad infrastructure permissions for the services managed by this research project, but IAM permissions are explicitly listed instead of using `iam:*`. This makes the most sensitive permission group easier to audit and explain.
-
-### ✅ Defense in Depth (Network Layers)
-```
-Internet  →  ALB SG (port 80 only)
-          →  EC2 SG (accepts traffic from ALB SG only)
-          →  RDS SG (accepts port 3306 from EC2 SG only)
-```
-
----
-
-## ⚙️ Configuration
-
-### Variables (non-sensitive) — `terraform.tfvars`
-
-```hcl
-aws_region = "us-east-1"
-app_port   = 80
-```
-
-### Secrets — AWS SSM Parameter Store
-
-Create these **once** before running `terraform apply`:
+This repository does not contain the frontend/backend source code, so local application development happens in:
 
 ```bash
-# Database credentials
-aws ssm put-parameter --name "/hospital/prod/db_username" \
-  --value "admin" --type String --overwrite
-
-aws ssm put-parameter --name "/hospital/prod/db_password" \
-  --value "YOUR_DB_PASSWORD" --type SecureString --overwrite
-
-# EC2 Key Pair
-aws ssm put-parameter --name "/hospital/prod/key_name" \
-  --value "your-keypair-name" --type String --overwrite
-
-# Application
-aws ssm put-parameter --name "/hospital/prod/github_repo_url" \
-  --value "https://github.com/ChiThanh-cloud/webhospital-booking.git" \
-  --type String --overwrite
-
-aws ssm put-parameter --name "/hospital/prod/email_from" \
-  --value "your-verified-ses-email@gmail.com" --type String --overwrite
+git clone https://github.com/ChiThanh-cloud/webhospital-booking.git
+cd webhospital-booking
 ```
 
-### All Available Variables
+Use the main application repository README for its exact frontend, backend, database, and Docker commands.
 
-| Variable | Default | Description |
-|---|---|---|
-| `aws_region` | `us-east-1` | AWS deployment region |
-| `project_name` | `hospital-booking` | Resource name prefix |
-| `environment` | `prod` | Environment tag (dev/staging/prod) |
-| `ec2_instance_type` | `t3.micro` | EC2 instance size |
-| `db_instance_class` | `db.t3.micro` | RDS instance size |
-| `app_port` | `80` | Port exposed by Nginx to ALB |
-| `email_provider` | `ses` | `ses` or `ethereal` (test mode) |
-| `ses_region` | `us-east-1` | AWS SES region |
-| `enable_waf` | `false` | Toggle optional WAF on/off |
-| `waf_rate_limit` | `1000` | Requests per 5 min per IP |
-
----
-
-## 🚀 Quick Start
+For this Terraform repository:
 
 ### Prerequisites
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) ≥ 1.5.0
-- [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html) configured with appropriate permissions
-- An existing EC2 Key Pair in your AWS account
-- A verified SES email identity
 
-### Deploy
+- Terraform >= 1.5.0
+- AWS CLI v2 configured with an AWS account
+- AWS permissions to manage EC2, ALB, Auto Scaling, RDS, CloudFront, WAF, IAM, SSM, SES, and S3 backend resources
+- Existing AWS S3 backend bucket matching `environments/prod/backend.tf`
+- Existing AWS account resources for ACM certificate, SES verified sender, and EC2 key pair as needed
+
+### Terraform workflow
 
 ```bash
-# 1. Clone this repository
 git clone https://github.com/ChiThanh-cloud/terraform.git
-cd terraform
+cd terraform/environments/prod
 
-# 2. Create SSM secrets (see Configuration section above)
-
-# 3. Initialize Terraform
 terraform init
-
-# 4. Preview infrastructure changes
+terraform fmt -recursive
+terraform validate
 terraform plan
-
-# 5. Apply (≈ 10–15 minutes for full stack)
 terraform apply
 ```
 
-### Post-Deploy DNS Setup
+## Environment Variables
 
-After `terraform apply` completes, point your custom domain to CloudFront:
+No secrets should be committed to Git. Runtime secrets are expected in AWS SSM Parameter Store.
 
-1. Copy the `cloudfront_domain` output value (e.g. `d1234abcdef.cloudfront.net`).
-2. In your DNS provider, create a **CNAME record**:
-   ```
-   nguyenchithanhit.id.vn  →  d1234abcdef.cloudfront.net
-   ```
-3. Wait 5–10 minutes for DNS propagation. Your app will be live at:  
-   **`https://nguyenchithanhit.id.vn`** 🎉
+Required SSM parameters:
 
-### Destroy
+| Parameter | Type | Purpose |
+| --- | --- | --- |
+| `/hospital/prod/db_username` | String | RDS MySQL username |
+| `/hospital/prod/db_password` | SecureString | RDS MySQL password |
+| `/hospital/prod/key_name` | String | Existing EC2 key pair name |
+| `/hospital/prod/github_repo_url` | String | Main app repo URL, for example `https://github.com/ChiThanh-cloud/webhospital-booking.git` |
+| `/hospital/prod/email_from` | String | SES verified sender email |
+
+Example local app variables are documented in [.env.example](.env.example). Do not commit real `.env` files.
+
+## Deployment
+
+### AWS deployment with Terraform
+
+From `environments/prod`:
 
 ```bash
-terraform destroy
+terraform init
+terraform plan
+terraform apply
 ```
 
----
+The deployment provisions:
 
-## 📤 Outputs
+- Security groups in the AWS default VPC
+- RDS MySQL 8.0
+- EC2 Launch Template and Auto Scaling Group
+- Application Load Balancer with `/health` target group health check
+- CloudFront distribution
+- Optional AWS WAF v2 on the ALB
+- IAM roles for EC2 runtime and GitHub Actions OIDC
 
-| Output | Description |
-|---|---|
-| `app_url` | `https://nguyenchithanhit.id.vn` — Production URL |
-| `alb_url` | Direct ALB URL (for debugging) |
-| `cloudfront_domain` | Default CloudFront domain |
-| `cloudfront_distribution_id` | Use to invalidate CDN cache after deploys |
-| `rds_endpoint` | MySQL endpoint (sensitive, internal VPC only) |
+### EC2 bootstrap deployment
 
----
+The EC2 instance runs [modules/app-cluster/user_data.sh](modules/app-cluster/user_data.sh). The script:
 
-## 📁 Related Repositories
+1. Installs Git, Docker, Docker Compose, MariaDB client, and AWS CLI.
+2. Clones `https://github.com/ChiThanh-cloud/webhospital-booking.git` from the SSM-provided repo URL.
+3. Fetches database credentials from SSM Parameter Store.
+4. Writes the backend runtime `.env` file on the EC2 instance.
+5. Seeds `database/schema.sql` if available in the app repository.
+6. Runs `docker-compose -f docker-compose.prod.yml up --build -d`.
 
-| Repository | Description |
-|---|---|
-| [webhospital-booking](https://github.com/ChiThanh-cloud/webhospital-booking) | Main application (React Frontend + Node.js Backend) |
-| [terraform](https://github.com/ChiThanh-cloud/terraform) | This repository — AWS Infrastructure as Code |
+### Docker Compose deployment
 
----
+Docker Compose deployment is expected to come from the main application repository through `docker-compose.prod.yml`. That file is referenced by `user_data.sh` but is not stored in this Terraform repository.
 
-## 👤 Author
+More detail: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
-**Nguyễn Chí Thành**  
-[![GitHub](https://img.shields.io/badge/GitHub-ChiThanh--cloud-181717?logo=github)](https://github.com/ChiThanh-cloud)
+## Security Considerations
 
----
+- Secrets are stored in SSM Parameter Store instead of this repository.
+- EC2 reads runtime secrets through its IAM instance profile.
+- Database access is restricted to the EC2 security group.
+- Public inbound access is limited to the ALB security group.
+- WAF rules are available but disabled by default through `enable_waf = false`.
+- RDS is not publicly accessible.
+- SES sending is scoped to the configured verified identity.
+- JWT secrets are generated during EC2 bootstrap and written to the server-side `.env` file.
 
-<p align="center">Made with ❤️ using Terraform & AWS</p>
+Recommended improvements:
+
+- Move from default VPC to custom public/private subnets.
+- Enable RDS deletion protection and final snapshots for long-lived environments.
+- Store or rotate JWT secrets through SSM or Secrets Manager instead of generating them on each bootstrap.
+- Add HTTPS listener directly on ALB if bypassing CloudFront is required.
+- Add CI checks such as `terraform fmt`, `terraform validate`, `tflint`, `tfsec`, or Checkov.
+
+More detail: [docs/SECURITY.md](docs/SECURITY.md)
+
+## Screenshots / Evidence
+
+No screenshots are included in this repository yet.
+
+Add evidence images to `docs/images/` and reference them here, for example:
+
+```md
+![CloudFront distribution](docs/images/cloudfront-distribution.png)
+![Terraform apply output](docs/images/terraform-apply.png)
+![Application homepage](docs/images/application-homepage.png)
+```
+
+Suggested evidence to add:
+
+- Terraform `plan` or `apply` output with sensitive values hidden
+- AWS ALB target group healthy status
+- CloudFront distribution status
+- RDS private database configuration
+- Application homepage and booking workflow screenshots
+
+## What I Learned
+
+- Designed a cloud deployment path for a real full-stack web application.
+- Separated application code, runtime configuration, database, and infrastructure concerns.
+- Used Terraform modules to make AWS resources easier to explain and maintain.
+- Applied basic AWS security layers with IAM roles, SSM Parameter Store, security groups, private RDS access, and optional WAF.
+- Practiced documenting deployment, troubleshooting, and limitations for recruiter and technical review.
+
+## Future Improvements
+
+- Replace default VPC usage with a custom VPC, public/private subnets, NAT gateways, and explicit route tables.
+- Clean up Terraform modules further and add environment reuse for dev/staging/prod.
+- Add HTTPS/domain setup steps for ALB and CloudFront validation.
+- Add CloudWatch dashboards, alarms, structured logs, and log retention policies.
+- Add automated backup and restore documentation.
+- Harden the CI/CD pipeline with policy checks and security scanning.
+- Harden RDS with private subnet design, final snapshots, deletion protection, and credential rotation.
+- Add automated infrastructure and smoke tests.
+
+## Related Documents
+
+- [Infrastructure notes](INFRASTRUCTURE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Deployment guide](docs/DEPLOYMENT.md)
+- [Security guide](docs/SECURITY.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Project summary for CV/interview](PROJECT_SUMMARY.md)
